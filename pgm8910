@@ -1,0 +1,463 @@
+Program 8: Create a basic REST API using ASP.NET Core that performs CRUD operations on a Book entity. Implement GET, POST, PUT, and DELETE actions.
+
+Steps:
+Create 2 Folders named Controllers and Models under the project
+Right click on the project name (here the project name is BookApi1) to create the folders.
+Next create .cs files by right clicking on the respective folders
+
+
+Controllers/BookController.cs
+using BookApi1.Models;
+using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace BookApi.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class BooksController : ControllerBase
+    {
+        private static List<Book> _books = new List<Book>
+        {
+            new Book { Id = 1, Title = "The Hitchhiker's Guide to the Galaxy", Author = "Douglas Adams", Year = 1979 },
+            new Book { Id = 2, Title = "Pride and Prejudice", Author = "Jane Austen", Year = 1813 }
+        };
+        private static int _nextId = 3; // For simulating ID generation
+
+        // GET: api/Books
+        [HttpGet]
+        public ActionResult<IEnumerable<Book>> GetBooks()
+        {
+            return Ok(_books);
+        }
+
+        // GET: api/Books/5
+        [HttpGet("{id}")]
+        public ActionResult<Book> GetBook(int id)
+        {
+            var book = _books.FirstOrDefault(b => b.Id == id);
+            if (book == null)
+            {
+                return NotFound();
+            }
+            return Ok(book);
+        }
+
+        // POST: api/Books
+        [HttpPost]
+        public ActionResult<Book> PostBook(Book book)
+        {
+            book.Id = _nextId++;
+            _books.Add(book);
+            return CreatedAtAction(nameof(GetBook), new { id = book.Id }, book);
+        }
+
+        // PUT: api/Books/5
+        [HttpPut("{id}")]
+        public IActionResult PutBook(int id, Book book)
+        {
+            if (id != book.Id)
+            {
+                return BadRequest();
+            }
+
+            var existingBook = _books.FirstOrDefault(b => b.Id == id);
+            if (existingBook == null)
+            {
+                return NotFound();
+            }
+
+            existingBook.Title = book.Title;
+            existingBook.Author = book.Author;
+            existingBook.Year = book.Year;
+
+            return NoContent();
+        }
+
+        // DELETE: api/Books/5
+        [HttpDelete("{id}")]
+        public IActionResult DeleteBook(int id)
+        {
+            var book = _books.FirstOrDefault(b => b.Id == id);
+            if (book == null)
+            {
+                return NotFound();
+            }
+
+            _books.Remove(book);
+            return NoContent();
+        }
+    }
+}
+
+
+Models/Book.cs
+
+namespace BookApi1.Models
+{
+    public class Book
+    {
+        public int Id { get; set; }
+        public string? Title { get; set; }
+        public string? Author { get; set; }
+        public int Year { get; set; }
+    }
+}
+
+
+Program.cs
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+
+builder.Services.AddControllers();
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+
+
+
+Program 9: Implement dependency injection in an ASP.NET Core web application by creating services and injecting them into controllers. Demonstrate the Transient, Scoped, and Singleton lifetimes
+
+
+Controllers/LifeController.cs
+using Microsoft.AspNetCore.Mvc;
+
+[ApiController]
+[Route("[controller]")]
+public class LifetimesController : ControllerBase
+{
+    // Inject each service once
+    private readonly TransientOperation _transient1;
+    private readonly TransientOperation _transient2;
+
+    private readonly ScopedOperation _scoped1;
+    private readonly ScopedOperation _scoped2;
+
+    private readonly SingletonOperation _singleton1;
+    private readonly SingletonOperation _singleton2;
+
+    public LifetimesController(
+        TransientOperation transient1,
+        TransientOperation transient2,
+        ScopedOperation scoped1,
+        ScopedOperation scoped2,
+        SingletonOperation singleton1,
+        SingletonOperation singleton2)
+    {
+        _transient1 = transient1;
+        _transient2 = transient2;
+        _scoped1 = scoped1;
+        _scoped2 = scoped2;
+        _singleton1 = singleton1;
+        _singleton2 = singleton2;
+    }
+
+    [HttpGet]
+    public IActionResult Get()
+    {
+        var result = new
+        {
+            Transient = new { First = _transient1.GetOperationId(), Second = _transient2.GetOperationId() },
+            Scoped = new { First = _scoped1.GetOperationId(), Second = _scoped2.GetOperationId() },
+            Singleton = new { First = _singleton1.GetOperationId(), Second = _singleton2.GetOperationId() }
+        };
+
+        return Ok(result);
+    }
+}
+
+
+Services/IOperation.cs
+namespace DiLifeTimeDemo.Services
+{
+    public interface IOperation
+    {
+        Guid OperationId { get; }
+        string GetOperationId();
+    }
+}
+
+
+Services/ Operation.cs
+using DiLifeTimeDemo.Services;
+using System;
+
+public abstract class OperationBase : IOperation
+{
+    public Guid OperationId { get; } = Guid.NewGuid();
+    public string GetOperationId() => OperationId.ToString();
+}
+
+public class TransientOperation : OperationBase { }
+public class ScopedOperation : OperationBase { }
+public class SingletonOperation : OperationBase { }
+
+Program.cs
+using DiLifeTimeDemo.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddTransient<TransientOperation>();     // Transient
+builder.Services.AddScoped<ScopedOperation>();           // Scoped
+builder.Services.AddSingleton<SingletonOperation>();
+builder.Services.AddControllers();
+
+builder.Services.AddTransient<IOperation, TransientOperation>();
+
+builder.Services.AddControllers();
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+
+
+Program 10: Build an application using Entity Framework Core to perform basic CRUD operations on a database containing Student data. Implement database migrations and ensure proper validation.
+Steps:
+
+Create Asp.net core web Api
+Install Sql Server Express Edition and SSMS
+Install the following packages 
+Microsoft.EntityFrameworkCore (8.0.1)
+Microsoft.EntityFrameworkCore.Tools(8.0.1)
+Microsoft.EntityFrameworkCore,Design. (8.0.1)
+Microsoft.EntityFrameworkCore.SqlServer(8.0.1)
+
+Create Model Folder and create Student.cs file
+Create controller folder and create StudentsController.cs
+Create Data folder and create StudentsContext.cs
+Add the following Code in the appsettings.json
+"ConnectionStrings": {
+"DefaultConnection":"Server=LAPTOP-9681D8DJ\\SQLEXPRESS; Database=StudentDb;Trusted_Connection=True;TrustServerCertificate=True"
+},
+Add the following Code in the program.cs 
+
+builder.Services.AddDbContext<StudentContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+Controllers/StudentsControllers.cs
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using StudentApi.Data;
+using StudentApi.Models;
+
+namespace StudentApi.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class StudentsController : ControllerBase
+    {
+        private readonly StudentContext _context;
+
+        public StudentsController(StudentContext context)
+        {
+            _context = context;
+        }
+
+        // GET: api/students
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
+        {
+            return await _context.Students.ToListAsync();
+        }
+
+        // GET: api/students/5
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Student>> GetStudent(int id)
+        {
+            var student = await _context.Students.FindAsync(id);
+
+            if (student == null)
+                return NotFound();
+
+            return student;
+        }
+
+        // POST: api/students
+        [HttpPost]
+        public async Task<ActionResult<Student>> PostStudent(Student student)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            _context.Students.Add(student);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetStudent), new { id = student.Id }, student);
+        }
+
+        // PUT: api/students/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutStudent(int id, Student student)
+        {
+            if (id != student.Id)
+                return BadRequest();
+
+            _context.Entry(student).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!_context.Students.Any(e => e.Id == id))
+                    return NotFound();
+                else
+                    throw;
+            }
+
+            return NoContent();
+        }
+
+        // DELETE: api/students/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteStudent(int id)
+        {
+            var student = await _context.Students.FindAsync(id);
+            if (student == null)
+                return NotFound();
+
+            _context.Students.Remove(student);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+    }
+}
+
+
+Data/StudentContext.cs
+
+using Microsoft.EntityFrameworkCore;
+using StudentApi.Models;
+
+namespace StudentApi.Data
+{
+    public class StudentContext : DbContext
+    {
+        public StudentContext(DbContextOptions<StudentContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<Student> Students { get; set; }
+    }
+}
+
+
+Models/Student.cs
+
+using System.ComponentModel.DataAnnotations;
+
+namespace StudentApi.Models
+{
+    public class Student
+    {
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string Name { get; set; }
+
+        [Range(1, 120)]
+        public int Age { get; set; }
+
+        [EmailAddress]
+        public string Email { get; set; }
+    }
+}
+
+ Program.cs
+using Microsoft.EntityFrameworkCore;
+using StudentApi.Data;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+
+builder.Services.AddControllers();
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddDbContext<StudentContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+
+
+appsettings.cs
+   
+{
+    "ConnectionStrings": {
+    "DefaultConnection":"Server=LAPTOP-9681D8DJ\\SQLEXPRESS; Database=StudentDb;Trusted_Connection=True;TrustServerCertificate=True"
+    },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+Program Structure should look like this
+
+
+Run Migration command through Package Manager Console
+Tools->NuGet Package Manager-> Package Manager Console
+
+PM>Add-Migration InitialCreate
+PM>Update-Database

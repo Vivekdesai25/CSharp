@@ -10,10 +10,12 @@ class Program
         string jsonFile = "output.json";
 
         // Read and display text file
+       
         string content = File.ReadAllText(textFile);
         Console.WriteLine(content);
 
         // Serialize to JSON and save
+        
         string json = JsonSerializer.Serialize(new { Content = content });
         File.WriteAllText(jsonFile, json);
 

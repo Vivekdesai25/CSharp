@@ -1,0 +1,22 @@
+using System;
+using System.IO;
+using System.Text.Json;
+
+class Program
+{
+    static void Main()
+    {
+        string textFile = "data.txt";
+        string jsonFile = "output.json";
+
+        // Read and display text file
+        string content = File.ReadAllText(textFile);
+        Console.WriteLine(content);
+
+        // Serialize to JSON and save
+        string json = JsonSerializer.Serialize(new { Content = content });
+        File.WriteAllText(jsonFile, json);
+
+        Console.WriteLine("Saved to JSON file!");
+    }
+}
